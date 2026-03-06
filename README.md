@@ -6,7 +6,7 @@ O aplicație web interactivă care demonstrează modul în care sarcinile (task-
 
 Proiectul vizualizează diferența dintre o abordare Greedy simplă și eursitica **LPT (Longest Processing Time)**, oferind o perspectivă clară asupra eficienței planificării.
 
-![Logo Load Balancing](logo_lb.png) *(Înlocuiește cu imaginea logo-ului generat)*
+![Logo Load Balancing](logo_lb.png) *
 
 ## 🚀 Caracteristici principale
 

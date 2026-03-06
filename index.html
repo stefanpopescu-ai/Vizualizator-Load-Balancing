@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Balancing Interactiv - Pas cu Pas</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        #header { width: 100%; background: #2c3e50; color: white; padding: 20px 0; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #controls { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 1000px; margin: 20px 0; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: center; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        input[type="number"], input[type="text"] { padding: 10px; border: 2px solid #ddd; border-radius: 6px; outline: none; transition: border-color 0.3s; }
+        input:focus { border-color: #3498db; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: bold; color: #2c3e50; }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: white; }
+        #btn-start { background-color: #3498db; }
+        #btn-next { background-color: #f39c12; }
+        #btn-finish { background-color: #27ae60; }
+        #btn-reset { background-color: #e74c3c; }
+        .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; transform: none; }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.9; }
+        #canvas-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 1000px; position: relative; }
+        canvas { width: 100%; height: 450px; display: block; }
+        #queue-display { width: 90%; max-width: 1000px; margin-bottom: 10px; font-size: 0.9rem; color: #7f8c8d; }
+        .highlight-text { color: #e67e22; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>Vizualizator Load Balancing</h1>
+    <p id="status">Configurează parametrii și apasă "Inițializează"</p>
+</div>
+
+<div id="controls">
+    <div class="input-group">
+        <label>Nr. Mașini:</label>
+        <input type="number" id="m-input" value="3" min="1" max="10">
+    </div>
+    <div class="input-group">
+        <label>Costuri (ex: 10, 5, 8):</label>
+        <input type="text" id="tasks-input" value="12, 10, 8, 7, 6, 4, 2">
+    </div>
+    <label class="checkbox-group">
+        <input type="checkbox" id="sort-check" checked> Sortare Descrescătoare (LPT)
+    </label>
+    <button id="btn-start" class="btn" onclick="initSimulation()">Inițializează</button>
+    <button id="btn-next" class="btn" onclick="step()" disabled>Pasul Următor</button>
+    <button id="btn-finish" class="btn" onclick="finishAll()" disabled>Finalizare</button>
+    <button id="btn-reset" class="btn" onclick="resetApp()">Reset</button>
+</div>
+
+<div id="queue-display">Coada de așteptare: <span id="queue-list">-</span></div>
+
+<div id="canvas-container">
+    <canvas id="canvasLB"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvasLB');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const colors = ['#3498db', '#e67e22', '#2ecc71', '#9b59b6', '#f1c40f', '#1abc9c', '#d35400', '#c0392b'];
+
+    let m, taskQueue = [], machines = [], currentTaskIndex = 0, isInitialized = false;
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement;
+        canvas.width = (rect.clientWidth - 40) * dpr;
+        canvas.height = 450 * dpr;
+        canvas.style.width = (rect.clientWidth - 40) + 'px';
+        canvas.style.height = '450px';
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('load', resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
+
+    function initSimulation() {
+        m = parseInt(document.getElementById('m-input').value);
+        let rawTasks = document.getElementById('tasks-input').value.split(',').map(t => parseInt(t.trim())).filter(t => !isNaN(t) && t > 0);
+        
+        if (rawTasks.length === 0) return alert("Introdu costuri valide!");
+
+        // Logica de sortare
+        if (document.getElementById('sort-check').checked) {
+            rawTasks.sort((a, b) => b - a);
+        }
+
+        taskQueue = rawTasks.map((cost, i) => ({ cost, color: colors[i % colors.length] }));
+        machines = Array.from({length: m}, () => ({ load: 0, tasks: [] }));
+        currentTaskIndex = 0;
+        isInitialized = true;
+
+        document.getElementById('btn-next').disabled = false;
+        document.getElementById('btn-finish').disabled = false;
+        document.getElementById('btn-start').disabled = true;
+        updateQueueDisplay();
+        draw();
+    }
+
+    function step() {
+        if (currentTaskIndex >= taskQueue.length) return;
+
+        let task = taskQueue[currentTaskIndex];
+        // Găsește mașina cu încărcarea minimă
+        let minIdx = 0;
+        for (let i = 1; i < machines.length; i++) {
+            if (machines[i].load < machines[minIdx].load) minIdx = i;
+        }
+
+        machines[minIdx].tasks.push(task);
+        machines[minIdx].load += task.cost;
+        currentTaskIndex++;
+
+        if (currentTaskIndex >= taskQueue.length) {
+            document.getElementById('btn-next').disabled = true;
+            document.getElementById('btn-finish').disabled = true;
+            document.getElementById('status').innerHTML = "Simulare finalizată! Makespan: <span class='highlight-text'>" + Math.max(...machines.map(m => m.load)) + "</span>";
+        }
+        updateQueueDisplay();
+        draw(minIdx); // Evidențiem mașina care tocmai a primit un task
+    }
+
+    function finishAll() {
+        while(currentTaskIndex < taskQueue.length) step();
+    }
+
+    function updateQueueDisplay() {
+        let remaining = taskQueue.slice(currentTaskIndex).map(t => t.cost).join(', ');
+        document.getElementById('queue-list').textContent = remaining || "Toate task-urile au fost alocate.";
+    }
+
+    function draw(highlightedMachine = null) {
+        const w = canvas.width / dpr, h = canvas.height / dpr;
+        ctx.clearRect(0, 0, w, h);
+
+        const margin = { top: 40, right: 30, bottom: 40, left: 60 };
+        const chartW = w - margin.left - margin.right;
+        const chartH = h - margin.top - margin.bottom;
+        const rowH = chartH / m;
+
+        const maxLoad = Math.max(...machines.map(m => m.load), 1);
+        const scaleX = chartW / (maxLoad * 1.1);
+
+        // Axele
+        ctx.strokeStyle = "#ccc";
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= m; i++) {
+            let y = margin.top + i * rowH;
+            ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(w - margin.right, y); ctx.stroke();
+        }
+
+        machines.forEach((mac, i) => {
+            let xPos = margin.left;
+            // Background pentru rândul activ
+            if (highlightedMachine === i) {
+                ctx.fillStyle = "rgba(243, 156, 18, 0.1)";
+                ctx.fillRect(margin.left, margin.top + i * rowH, chartW, rowH);
+            }
+
+            ctx.fillStyle = "#2c3e50";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "right";
+            ctx.fillText("M" + (i+1), margin.left - 15, margin.top + i * rowH + rowH/2 + 5);
+
+            mac.tasks.forEach(task => {
+                let barW = task.cost * scaleX;
+                ctx.fillStyle = task.color;
+                ctx.fillRect(xPos, margin.top + i * rowH + 10, barW, rowH - 20);
+                
+                ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                ctx.strokeRect(xPos, margin.top + i * rowH + 10, barW, rowH - 20);
+
+                if (barW > 20) {
+                    ctx.fillStyle = "white";
+                    ctx.textAlign = "center";
+                    ctx.fillText(task.cost, xPos + barW/2, margin.top + i * rowH + rowH/2 + 5);
+                }
+                xPos += barW;
+            });
+            
+            // Text pentru totalul pe mașină
+            ctx.fillStyle = "#7f8c8d";
+            ctx.textAlign = "left";
+            ctx.fillText("Total: " + mac.load, xPos + 10, margin.top + i * rowH + rowH/2 + 5);
+        });
+    }
+
+    function resetApp() {
+        location.reload();
+    }
+</script>
+</body>
+</html>

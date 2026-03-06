@@ -35,12 +35,6 @@ Problema echilibrării sarcinilor pe mașini identice este NP-hard. Algoritmul L
 3.  Introdu numărul de mașini și lista de costuri separate prin virgulă (ex: `20, 15, 10, 5`).
 4.  Apasă **"Inițializează"** și apoi parcurge pașii sau apasă **"Finalizare"**.
 
-## 📊 Indicatori de Eficiență
-
-La finalul simulării, aplicația afișează:
-* **Makespan:** Timpul în care ultima mașină își termină activitatea.
-* **Media Ideală:** Calculată ca $\frac{\sum \text{Costuri}}{\text{Nr. Mașini}}$. Reprezintă pragul sub care este imposibil să cobori.
-* **Procentul de Eficiență:** Cât de aproape este soluția ta de media ideală.
 
 ---
 Creat cu ❤️ pentru studenții la Informatică și Inginerie.

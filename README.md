@@ -36,5 +36,3 @@ Problema echilibrării sarcinilor pe mașini identice este NP-hard. Algoritmul L
 4.  Apasă **"Inițializează"** și apoi parcurge pașii sau apasă **"Finalizare"**.
 
 
----
-Creat cu ❤️ pentru studenții la Informatică și Inginerie.
